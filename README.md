@@ -5,3 +5,6 @@ IC datasheet can be found at https://www.ti.com/product/INA3221
 
 Original project is from: https://github.com/beast-devices/Arduino-INA3221
 
+A fork taken from  https://github.com/Tinyu-Zhao/INA3221
+
+
