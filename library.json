@@ -10,7 +10,7 @@
     "type": "git",
     "url": "https://github.com/cyberphox/INA3221.git"
   },
-  "version": "0.0.1",
+  "version": "dev0.0.2",
   "frameworks": "arduino",
   "platforms": "espressif32"
 }
