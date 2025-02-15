@@ -3,3 +3,5 @@ Arduino library for Texas Instruments INA3221 Triple Channel High-Side Measureme
 
 IC datasheet can be found at https://www.ti.com/product/INA3221 
 
+Original project is from: https://github.com/beast-devices/Arduino-INA3221
+
