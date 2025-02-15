@@ -50,7 +50,7 @@ void INA3221::_write(ina3221_reg_t reg, uint16_t *val)
     _i2c->endTransmission();
 }
 
-void INA3221::begin(TwoWire *theWire)
+bool INA3221::begin(TwoWire *theWire)
 {
     _i2c = theWire;
 
@@ -62,7 +62,7 @@ void INA3221::begin(TwoWire *theWire)
     _filterRes[1] = 0;
     _filterRes[2] = 0;
 
-    _i2c->begin();
+    return _i2c->begin();
 }
 
 void INA3221::setShuntRes(uint32_t res_ch1, uint32_t res_ch2, uint32_t res_ch3)
