@@ -100,8 +100,10 @@ void INA3221::setModePowerDown()
     conf_reg_t conf_reg;
 
     _read(INA3221_REG_CONF, (uint16_t *)&conf_reg);
+    // Mode[2:0] = 000
     conf_reg.mode_bus_en        = 0;
     conf_reg.mode_continious_en = 0;
+    conf_reg.mode_shunt_en      = 0;
     _write(INA3221_REG_CONF, (uint16_t *)&conf_reg);
 }
 
@@ -299,10 +301,18 @@ void INA3221::setChannelEnable(ina3221_ch_t channel)
         case INA3221_CH1:
             conf_reg.ch1_en = 1;
             break;
+        
         case INA3221_CH2:
             conf_reg.ch2_en = 1;
             break;
+        
         case INA3221_CH3:
+            conf_reg.ch3_en = 1;
+            break;
+        
+        case INA3221_CH_NUM:
+            conf_reg.ch1_en = 1;
+            conf_reg.ch2_en = 1;
             conf_reg.ch3_en = 1;
             break;
         default:
@@ -322,11 +332,22 @@ void INA3221::setChannelDisable(ina3221_ch_t channel)
         case INA3221_CH1:
             conf_reg.ch1_en = 0;
             break;
+        
         case INA3221_CH2:
             conf_reg.ch2_en = 0;
             break;
+        
         case INA3221_CH3:
             conf_reg.ch3_en = 0;
+            break;
+        
+        case INA3221_CH_NUM:
+            // A quick way to clear all channels
+            conf_reg.ch1_en = 0;
+            conf_reg.ch2_en = 0;
+            conf_reg.ch3_en = 0;
+            break;
+        default:
             break;
     }
 
