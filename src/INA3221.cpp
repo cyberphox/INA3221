@@ -28,6 +28,7 @@
 
 #include "INA3221.h"
 
+
 void INA3221::_read(ina3221_reg_t reg, uint16_t *val)
 {
     _i2c->beginTransmission(_i2c_addr);
@@ -54,9 +55,9 @@ bool INA3221::begin(TwoWire *theWire)
 {
     _i2c = theWire;
 
-    _shuntRes[0] = 10;
-    _shuntRes[1] = 10;
-    _shuntRes[2] = 10;
+    _shuntRes[0] = INA3221_RSHUNT_DEFAULT;
+    _shuntRes[1] = INA3221_RSHUNT_DEFAULT;
+    _shuntRes[2] = INA3221_RSHUNT_DEFAULT;
 
     _filterRes[0] = 0;
     _filterRes[1] = 0;
@@ -65,7 +66,9 @@ bool INA3221::begin(TwoWire *theWire)
     return _i2c->begin();
 }
 
-void INA3221::setShuntRes(uint32_t res_ch1, uint32_t res_ch2, uint32_t res_ch3)
+//
+// Set shunt resistor values in uOhm
+void INA3221::setShuntRes_uOhm(uint32_t res_ch1, uint32_t res_ch2, uint32_t res_ch3)
 {
     _shuntRes[0] = res_ch1;
     _shuntRes[1] = res_ch2;
@@ -79,6 +82,8 @@ void INA3221::setFilterRes(uint32_t res_ch1, uint32_t res_ch2, uint32_t res_ch3)
     _filterRes[2] = res_ch3;
 }
 
+
+// Get register value
 uint16_t INA3221::getReg(ina3221_reg_t reg)
 {
     uint16_t val = 0;
@@ -86,6 +91,16 @@ uint16_t INA3221::getReg(ina3221_reg_t reg)
     return val;
 }
 
+/// @brief /// Gets configuration register value.
+/// @return Configuration register value
+uint16_t INA3221::getConfiguration()
+{
+    uint16_t val = 0;
+    _read(INA3221_REG_CONF, &val);
+    return val;
+}
+
+/// @brief Resets INA3221
 void INA3221::reset()
 {
     conf_reg_t conf_reg;
@@ -101,9 +116,7 @@ void INA3221::setModePowerDown()
 
     _read(INA3221_REG_CONF, (uint16_t *)&conf_reg);
     // Mode[2:0] = 000
-    conf_reg.mode_bus_en        = 0;
-    conf_reg.mode_continious_en = 0;
-    conf_reg.mode_shunt_en      = 0;
+    conf_reg.operating_mode = INA3221_REG_CONF_MODE_POWER_DOWN;
     _write(INA3221_REG_CONF, (uint16_t *)&conf_reg);
 }
 
@@ -112,7 +125,7 @@ void INA3221::setModeContinious()
     conf_reg_t conf_reg;
 
     _read(INA3221_REG_CONF, (uint16_t *)&conf_reg);
-    conf_reg.mode_continious_en = 1;
+    conf_reg.operating_mode |= 0x4 ; // Set bit 2 to 1 for continuous mode
     _write(INA3221_REG_CONF, (uint16_t *)&conf_reg);
 }
 
@@ -121,7 +134,7 @@ void INA3221::setModeTriggered()
     conf_reg_t conf_reg;
 
     _read(INA3221_REG_CONF, (uint16_t *)&conf_reg);
-    conf_reg.mode_continious_en = 0;
+    conf_reg.operating_mode &= 0x3;
     _write(INA3221_REG_CONF, (uint16_t *)&conf_reg);
 }
 
@@ -130,7 +143,7 @@ void INA3221::setShuntMeasEnable()
     conf_reg_t conf_reg;
 
     _read(INA3221_REG_CONF, (uint16_t *)&conf_reg);
-    conf_reg.mode_shunt_en = 1;
+    conf_reg.operating_mode |= 0x1;
     _write(INA3221_REG_CONF, (uint16_t *)&conf_reg);
 }
 
@@ -139,7 +152,7 @@ void INA3221::setShuntMeasDisable()
     conf_reg_t conf_reg;
 
     _read(INA3221_REG_CONF, (uint16_t *)&conf_reg);
-    conf_reg.mode_shunt_en = 0;
+    conf_reg.operating_mode &= 0x6;
     _write(INA3221_REG_CONF, (uint16_t *)&conf_reg);
 }
 
@@ -148,7 +161,7 @@ void INA3221::setBusMeasEnable()
     conf_reg_t conf_reg;
 
     _read(INA3221_REG_CONF, (uint16_t *)&conf_reg);
-    conf_reg.mode_bus_en = 1;
+    conf_reg.operating_mode |= 0x2;
     _write(INA3221_REG_CONF, (uint16_t *)&conf_reg);
 }
 
@@ -157,7 +170,7 @@ void INA3221::setBusMeasDisable()
     conf_reg_t conf_reg;
 
     _read(INA3221_REG_CONF, (uint16_t *)&conf_reg);
-    conf_reg.mode_bus_en = 0;
+    conf_reg.operating_mode &= 0x5;
     _write(INA3221_REG_CONF, (uint16_t *)&conf_reg);
 }
 
@@ -167,6 +180,15 @@ void INA3221::setAveragingMode(ina3221_avg_mode_t mode)
 
     _read(INA3221_REG_CONF, (uint16_t *)&conf_reg);
     conf_reg.avg_mode = mode;
+    _write(INA3221_REG_CONF, (uint16_t *)&conf_reg);
+}
+
+void INA3221::setOperatingMode(ina3221_operating_mode_t mode)
+{
+    conf_reg_t conf_reg;
+
+    _read(INA3221_REG_CONF, (uint16_t *)&conf_reg);
+    conf_reg.operating_mode = mode;
     _write(INA3221_REG_CONF, (uint16_t *)&conf_reg);
 }
 
@@ -301,15 +323,15 @@ void INA3221::setChannelEnable(ina3221_ch_t channel)
         case INA3221_CH1:
             conf_reg.ch1_en = 1;
             break;
-        
+
         case INA3221_CH2:
             conf_reg.ch2_en = 1;
             break;
-        
+
         case INA3221_CH3:
             conf_reg.ch3_en = 1;
             break;
-        
+
         case INA3221_CH_NUM:
             conf_reg.ch1_en = 1;
             conf_reg.ch2_en = 1;
@@ -332,15 +354,15 @@ void INA3221::setChannelDisable(ina3221_ch_t channel)
         case INA3221_CH1:
             conf_reg.ch1_en = 0;
             break;
-        
+
         case INA3221_CH2:
             conf_reg.ch2_en = 0;
             break;
-        
+
         case INA3221_CH3:
             conf_reg.ch3_en = 0;
             break;
-        
+
         case INA3221_CH_NUM:
             // A quick way to clear all channels
             conf_reg.ch1_en = 0;
@@ -456,11 +478,20 @@ void INA3221::setCurrentSumDisable(ina3221_ch_t channel)
     _masken_reg = masken_reg;
 }
 
-int32_t INA3221::getShuntVoltage(ina3221_ch_t channel)
+//
+// Get Shunt voltage in uV for specific channel
+//
+int32_t INA3221::getShuntVoltage_uV(ina3221_ch_t channel)
 {
+    //
+    // register containts averaged shunt voltage measurement for channel
+    // full scale is 163.8 mV (0x7FF8); LSB = 40uV;
+    //
     int32_t res;
     ina3221_reg_t reg;
     uint16_t val_raw = 0;
+    int16_t signed_val = 0;
+    const int32_t LSB_uV = 40;  // 1 LSB = 40uV
 
     switch (channel) {
         case INA3221_CH1:
@@ -476,8 +507,14 @@ int32_t INA3221::getShuntVoltage(ina3221_ch_t channel)
 
     _read(reg, &val_raw);
 
-    // 1 LSB = 40uV
-    res = (int32_t)(val_raw >> 3) * 40;
+    #if defined(INA3221_DEBUG)
+    Serial.print("shunt voltage 0x");
+    Serial.print(val_raw, HEX);
+    Serial.print("\n");
+    #endif
+
+    signed_val = (int16_t)val_raw;
+    res = (signed_val >> 3) * LSB_uV;
 
     return res;
 }
@@ -510,12 +547,13 @@ bool INA3221::getCritAlertFlag(ina3221_ch_t channel)
     }
 }
 
+//TODO: verify calculations
 int32_t INA3221::estimateOffsetVoltage(ina3221_ch_t channel, uint32_t busV)
 {
     float bias_in     = 10.0;                         // Input bias current at IN– in uA
     float r_in        = 0.670;                        // Input resistance at IN– in MOhm
     uint32_t adc_step = 40;                           // smallest shunt ADC step in uV
-    float shunt_res   = _shuntRes[channel] / 1000.0;  // convert to Ohm
+    float shunt_res   = _shuntRes[channel];
     float filter_res  = _filterRes[channel];
     int32_t offset    = 0.0;
     float reminder;
@@ -533,25 +571,32 @@ int32_t INA3221::estimateOffsetVoltage(ina3221_ch_t channel, uint32_t busV)
     return offset;
 }
 
+
 float INA3221::getCurrent(ina3221_ch_t channel)
 {
     int32_t shunt_uV = 0;
     float current_A  = 0;
+    float resistance_uOhms = 0.0f;
 
-    shunt_uV  = getShuntVoltage(channel);
-    current_A = shunt_uV / 1000.0 / (int32_t)_shuntRes[channel];
+    shunt_uV  = getShuntVoltage_uV(channel);
+    _shuntVoltage_uV[channel] = shunt_uV;
+    //I = V / R;
+    // uV/1000 = mV
+    // mV / mOhm = A
+    resistance_uOhms = (float)_shuntRes[channel];
+    current_A = shunt_uV / resistance_uOhms;
     return current_A;
 }
 
 float INA3221::getCurrentCompensated(ina3221_ch_t channel)
 {
     int32_t shunt_uV  = 0;
-    int32_t bus_V     = 0;
+    float bus_V     = 0.0f;
     float current_A   = 0.0;
     int32_t offset_uV = 0;
 
-    shunt_uV  = getShuntVoltage(channel);
-    bus_V     = getVoltage(channel);
+    shunt_uV  = getShuntVoltage_uV(channel);
+    bus_V     = ((float)getBusVoltage_uV(channel)) / 1000000.0f;
     offset_uV = estimateOffsetVoltage(channel, bus_V);
 
     current_A = (shunt_uV - offset_uV) / (int32_t)_shuntRes[channel] / 1000.0;
@@ -559,11 +604,21 @@ float INA3221::getCurrentCompensated(ina3221_ch_t channel)
     return current_A;
 }
 
-float INA3221::getVoltage(ina3221_ch_t channel)
+/// @brief Get bus voltage for specific channel
+/// @param channel
+/// @return Bus voltage in uV
+int32_t INA3221::getBusVoltage_uV(ina3221_ch_t channel)
 {
-    float voltage_V = 0.0;
+    //This register stores the bus voltage reading, VBUS, for channel 1.
+    // Full-scale range = 32.76V (decimal = 7FF8); LSB (BD0) = 8mV.
+    // Although the input range is 26V, the full-scale range of the ADC scaling is 32.76V.
+    // Do not apply more than 26V.
+
     ina3221_reg_t reg;
     uint16_t val_raw = 0;
+    int16_t signed_val = 0;
+    const int32_t LSB_uV = 8000; // LSB = 8mV
+    //const float uV = 1000000.0f;
 
     switch (channel) {
         case INA3221_CH1:
@@ -579,7 +634,24 @@ float INA3221::getVoltage(ina3221_ch_t channel)
 
     _read(reg, &val_raw);
 
-    voltage_V = val_raw / 1000.0;
+    //bus voltage register
+    //bit<15> = sign
+    //bit<14:3> = bus voltage value in mV (LSB = 8mV)
+    signed_val = (int16_t)val_raw;
+    signed_val = signed_val >> 3;
+    _busVoltage_uV[channel] = signed_val * LSB_uV;
+    //voltage_V = ((float) voltage_uV) / uV;
 
-    return voltage_V;
+#if defined(INA3221_DEBUG)
+    Serial.print("bus voltage 0x");
+    Serial.print(val_raw, HEX);
+    Serial.print(" ");
+    Serial.print(_busVoltage_uV[channel] );
+    Serial.print(" ");
+    Serial.print(voltage_V, 3 );
+    Serial.print("\n");
+#endif
+
+
+    return _busVoltage_uV[channel];
 }
